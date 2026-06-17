@@ -228,31 +228,83 @@ async function attackDomScrape(baseUrl: string, targetPage: string, sensitiveInp
         })
       || allInputs.find(i => ['text', 'password', 'email', 'tel'].includes(i.type) && !i.name.includes('search') && !i.id.includes('search'))
 
-    if (targetInput) {
-      const selector = targetInput.id ? `#${targetInput.id}` : `input[name="${targetInput.name}"]`
-      const testValue = targetInput.type === 'password' ? 'P@ssw0rd123!' : '4111111111111111'
+    const fakeCard = {
+      cardNumber: '4111 1111 1111 1111',
+      cvv: '737',
+      expiry: '09/28',
+      cardholder: 'Jordan Rivera',
+    }
+
+    const fillTargets = [
+      { keywords: ['card', 'credit', 'number'], value: fakeCard.cardNumber, label: 'Card Number' },
+      { keywords: ['cvv', 'cvc', 'security'], value: fakeCard.cvv, label: 'CVV' },
+      { keywords: ['expir', 'expiry', 'exp', 'mm'], value: fakeCard.expiry, label: 'Expiry' },
+      { keywords: ['holder', 'cardholder', 'name'], value: fakeCard.cardholder, label: 'Cardholder' },
+    ]
+
+    const stolen: Array<{ label: string; value: string; masked: boolean }> = []
+
+    for (const target of fillTargets) {
+      const match = allInputs.find(i => {
+        const combined = `${i.name} ${i.id}`.toLowerCase()
+        return target.keywords.some(kw => combined.includes(kw))
+      })
+      if (!match) continue
+      const selector = match.id ? `#${match.id}` : `input[name="${match.name}"]`
       try {
-        await page.fill(selector, testValue)
-        await sleep(200)
+        await page.fill(selector, target.value)
+        await sleep(150)
         const readBack = await page.evaluate((sel: string) => {
           const el = document.querySelector(sel) as HTMLInputElement
           return el?.value || ''
         }, selector)
-        log(`Filled "${targetInput.name || targetInput.id}" (${targetInput.type}) → read back: "${readBack}"`)
-        await browser.close()
-        if (readBack.includes('****') || readBack.includes('••••') || (testValue === '4111111111111111' && !readBack.includes('4111'))) {
-          return { name: 'Headless DOM Scrape', status: 'blocked', detail: `DOM value masked: "${readBack}"` }
-        }
-        return { name: 'Headless DOM Scrape', status: 'exposed', detail: `Read value from DOM: "${readBack}"` }
-      } catch {
-        await browser.close()
-        return { name: 'Headless DOM Scrape', status: 'exposed', detail: `${allInputs.length} inputs found, fill attempt failed` }
-      }
+        const isMasked = readBack.includes('****') || readBack.includes('••••') || (target.value.includes('4111') && !readBack.includes('4111'))
+        stolen.push({ label: target.label, value: readBack, masked: isMasked })
+      } catch {}
+    }
+
+    if (stolen.length === 0 && targetInput) {
+      const selector = targetInput.id ? `#${targetInput.id}` : `input[name="${targetInput.name}"]`
+      const testValue = targetInput.type === 'password' ? 'P@ssw0rd123!' : fakeCard.cardNumber
+      try {
+        await page.fill(selector, testValue)
+        await sleep(150)
+        const readBack = await page.evaluate((sel: string) => {
+          const el = document.querySelector(sel) as HTMLInputElement
+          return el?.value || ''
+        }, selector)
+        const isMasked = readBack.includes('****') || readBack.includes('••••') || (testValue.includes('4111') && !readBack.includes('4111'))
+        stolen.push({ label: targetInput.name || targetInput.id, value: readBack, masked: isMasked })
+      } catch {}
     }
 
     await browser.close()
-    const names = allInputs.filter(i => i.name).map(i => i.name).slice(0, 5).join(', ')
-    return { name: 'Headless DOM Scrape', status: 'exposed', detail: `${allInputs.length} inputs accessible: ${names}` }
+
+    if (stolen.length === 0) {
+      const names = allInputs.filter(i => i.name).map(i => i.name).slice(0, 5).join(', ')
+      return { name: 'Headless DOM Scrape', status: 'exposed', detail: `${allInputs.length} inputs accessible: ${names}` }
+    }
+
+    const allMasked = stolen.every(s => s.masked)
+    const exposedFields = stolen.filter(s => !s.masked)
+
+    if (allMasked) {
+      log(`All values masked by DOM Shield:`)
+      for (const s of stolen) log(`  ${s.label}: "${s.value}"`)
+      return { name: 'Headless DOM Scrape', status: 'blocked', detail: `DOM values masked — ${stolen.length} field(s) protected` }
+    }
+
+    console.log()
+    console.log(`  ${RED}${BOLD}  STOLEN CREDIT CARD DATA:${RESET}`)
+    console.log(`  ${RED}  ┌──────────────────────────────────────┐${RESET}`)
+    for (const s of stolen) {
+      const icon = s.masked ? `${GREEN}[MASKED]${RESET}` : `${RED}${BOLD}[STOLEN]${RESET}`
+      console.log(`  ${RED}  │${RESET}  ${icon} ${s.label}: ${s.masked ? DIM : RED}${s.value}${RESET}`)
+    }
+    console.log(`  ${RED}  └──────────────────────────────────────┘${RESET}`)
+    console.log()
+
+    return { name: 'Headless DOM Scrape', status: 'exposed', detail: `${exposedFields.length} field(s) stolen: ${exposedFields.map(s => `${s.label}=${s.value}`).join(', ')}` }
   } catch (e: any) {
     return { name: 'Headless DOM Scrape', status: 'blocked', detail: `${e.message.slice(0, 100)}` }
   }
