@@ -1,0 +1,54 @@
+{
+  "name": "@cipherhacks/shield",
+  "version": "0.1.0",
+  "description": "AI breach defense package — protect any website from AI-driven attacks",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./nextjs": {
+      "types": "./dist/nextjs.d.ts",
+      "import": "./dist/nextjs.mjs",
+      "require": "./dist/nextjs.js"
+    },
+    "./express": {
+      "types": "./dist/express.d.ts",
+      "import": "./dist/express.mjs",
+      "require": "./dist/express.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.mjs",
+      "require": "./dist/react.js"
+    },
+    "./client": "./dist/client.global.js"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsup",
+    "dev": "tsup --watch",
+    "test": "echo \"no tests yet\""
+  },
+  "peerDependencies": {
+    "next": ">=14",
+    "express": ">=4",
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "next": { "optional": true },
+    "express": { "optional": true },
+    "react": { "optional": true }
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.0",
+    "@types/react": "^19.0.0",
+    "@types/express": "^5.0.0"
+  },
+  "files": ["dist"],
+  "license": "MIT"
+}
