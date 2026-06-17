@@ -57,6 +57,17 @@ export function createCipherHacksMiddleware(
       return NextResponse.redirect(new URL(config.blockPage, request.url));
     }
 
+    if (slowdownMs >= 2000) {
+      logger.threat(
+        `Excessive repetition from ${requestInfo.ip} — blocking (slowdown: ${slowdownMs}ms)`,
+        assessment
+      );
+      return new NextResponse('Too Many Requests', {
+        status: 429,
+        headers: { 'X-CipherHacks-Slowdown': String(slowdownMs), 'Retry-After': String(Math.ceil(slowdownMs / 1000)) },
+      });
+    }
+
     if (slowdownMs > 0) {
       logger.warn(
         `Slowing down ${requestInfo.ip} by ${slowdownMs}ms — repeated request pattern`,
