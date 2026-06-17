@@ -1,5 +1,5 @@
 {
-  "name": "@cipherhacks/shield",
+  "name": "cipherhacks-shield",
   "version": "0.1.0",
   "description": "AI breach defense package — protect any website from AI-driven attacks",
   "main": "./dist/index.js",
