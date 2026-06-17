@@ -1,6 +1,7 @@
 import { mergeConfig } from '../../config';
 import { scoreRequest } from '../fingerprint';
 import { generateCSPHeader } from '../csp';
+import { addEvent } from '../event-store';
 import { createLogger } from '../../shared/logger';
 import type { ShieldConfig, SensitivityLevel, RequestInfo } from '../../types';
 
@@ -23,6 +24,19 @@ export function createCipherHacksMiddleware(
       config.rateLimit,
       sensitivity
     );
+
+    addEvent({
+      id: assessment.requestId,
+      timestamp: assessment.timestamp,
+      ip: requestInfo.ip,
+      userAgent: requestInfo.userAgent,
+      url: pathname,
+      method: request.method,
+      threatScore: assessment.score,
+      action: rateLimited ? 'block' : assessment.action,
+      signals: assessment.signals,
+      slowdownMs,
+    });
 
     if (config.debug) {
       logger.debug(`${request.method} ${pathname}`, {

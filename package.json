@@ -9,9 +9,14 @@
     "build": "npx turbo run build",
     "dev": "npx turbo run dev",
     "lint": "npx turbo run lint",
-    "test": "npx turbo run test"
+    "test": "npx turbo run test",
+    "attack": "npx tsx scripts/attack-sim.ts",
+    "attack:vulnerable": "npx tsx scripts/attack-sim.ts --target vulnerable",
+    "attack:protected": "npx tsx scripts/attack-sim.ts --target protected"
   },
   "devDependencies": {
+    "playwright": "^1.52.0",
+    "tsx": "^4.19.0",
     "turbo": "^2.5.0",
     "typescript": "^5.7.0"
   }

@@ -19,3 +19,5 @@ export { detectBot, analyzePayload } from './server/bot-detection';
 export { checkRateLimit, resetRateLimiter } from './server/rate-limiter';
 export { checkRepetition, getRepetitionFlags, resetRepetitionTracker } from './server/rate-limiter';
 export { generateCSPHeader } from './server/csp';
+export { addEvent, getEvents, getEventsSince, getStats, clearEvents } from './server/event-store';
+export type { SecurityEvent, EventStats } from './server/event-store';
