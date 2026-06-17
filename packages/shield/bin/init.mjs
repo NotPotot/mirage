@@ -38,18 +38,27 @@ const deps = { ...pkg.dependencies, ...pkg.devDependencies }
 
 const isNext = !!deps['next']
 const isExpress = !!deps['express']
+const isHono = !!deps['hono']
+const isCRA = !!deps['react-scripts']
 const hasReact = !!deps['react']
 
-if (!isNext && !isExpress) {
-  fail('CipherHacks supports Next.js and Express projects. Neither detected in package.json.')
+const framework = isNext ? 'Next.js'
+  : isExpress ? 'Express'
+  : isHono ? 'React + Hono'
+  : isCRA ? 'Create React App'
+  : hasReact ? 'React'
+  : null
+
+if (!framework) {
+  fail('No supported framework detected (Next.js, Express, Hono, or React).')
 }
 
 log(`${DIM}Project: ${pkg.name || 'unnamed'}${RESET}`)
-log(`${DIM}Framework: ${isNext ? 'Next.js' : 'Express'}${RESET}`)
+log(`${DIM}Framework: ${framework}${RESET}`)
 
-// ─── Step 1: Install package ───
+// ─── Step 1: Check package is installed ───
 
-step(1, 'Installing cipherhacks-shield...')
+step(1, 'Checking cipherhacks-shield...')
 
 const hasShield = deps['cipherhacks-shield']
 if (hasShield) {
@@ -59,7 +68,8 @@ if (hasShield) {
     : existsSync(join(cwd, 'yarn.lock')) ? 'yarn'
     : 'npm'
 
-  const installCmd = pm === 'yarn' ? 'yarn add cipherhacks-shield' : `${pm} install cipherhacks-shield`
+  const legacyFlag = pm === 'npm' ? ' --legacy-peer-deps' : ''
+  const installCmd = pm === 'yarn' ? 'yarn add cipherhacks-shield' : `${pm} install cipherhacks-shield${legacyFlag}`
   log(`${DIM}$ ${installCmd}${RESET}`)
 
   try {
@@ -70,7 +80,7 @@ if (hasShield) {
   }
 }
 
-// ─── Step 2: Create middleware ───
+// ─── Next.js setup ───
 
 if (isNext) {
   step(2, 'Creating middleware.ts...')
@@ -96,8 +106,6 @@ export const config = {
     done(`Created ${srcDir ? 'src/' : ''}middleware.ts`)
   }
 
-  // ─── Step 3: Create /blocked page ───
-
   step(3, 'Creating /blocked page...')
 
   const appDir = existsSync(join(cwd, 'src', 'app')) ? join(cwd, 'src', 'app')
@@ -114,27 +122,10 @@ export const config = {
       warn('/blocked page already exists — skipping')
     } else {
       mkdirSync(blockedDir, { recursive: true })
-      const blockedPage = `export default function BlockedPage() {
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui' }}>
-      <div style={{ textAlign: 'center', maxWidth: 420, padding: 24 }}>
-        <div style={{ fontSize: 64, marginBottom: 16 }}>🛡️</div>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Access Blocked</h1>
-        <p style={{ color: '#666', lineHeight: 1.6 }}>
-          CipherHacks has detected automated or suspicious activity from your
-          session. This request has been blocked to protect sensitive data.
-        </p>
-      </div>
-    </div>
-  )
-}
-`
-      writeFileSync(blockedPath, blockedPage)
+      writeFileSync(blockedPath, blockedPageContent())
       done('Created app/blocked/page.tsx')
     }
   }
-
-  // ─── Step 4: Create events API ───
 
   step(4, 'Creating security events API...')
 
@@ -172,11 +163,140 @@ export async function POST(request: Request) {
   }
 }
 
+// ─── React (CRA / Vite / plain React) setup ───
+
+if (!isNext && hasReact) {
+  step(2, 'Creating CipherHacks wrapper component...')
+
+  const srcDir = existsSync(join(cwd, 'src')) ? join(cwd, 'src') : cwd
+  const componentsDir = join(srcDir, 'components')
+  mkdirSync(componentsDir, { recursive: true })
+
+  const wrapperPath = join(componentsDir, 'CipherHacksShield.tsx')
+  if (existsSync(wrapperPath)) {
+    warn('CipherHacksShield.tsx already exists — skipping')
+  } else {
+    const wrapper = `import { CipherHacksProvider } from 'cipherhacks-shield/react'
+import type { ReactNode } from 'react'
+
+export function CipherHacksShield({ children }: { children: ReactNode }) {
+  return (
+    <CipherHacksProvider
+      protectSelectors={['[data-sensitive]', 'input[type="password"]', 'input[name*="card"]', 'input[name*="cvv"]']}
+      honeypotFields={true}
+      behaviorTracking={true}
+    >
+      {children}
+    </CipherHacksProvider>
+  )
+}
+`
+    writeFileSync(wrapperPath, wrapper)
+    done('Created src/components/CipherHacksShield.tsx')
+  }
+
+  step(3, 'Finding your app entry point...')
+
+  const appFiles = ['App.tsx', 'App.jsx', 'App.js'].map(f => join(srcDir, f))
+  const appFile = appFiles.find(f => existsSync(f))
+
+  if (appFile) {
+    const appContent = readFileSync(appFile, 'utf-8')
+
+    if (appContent.includes('CipherHacksShield')) {
+      warn('CipherHacksShield already imported in App — skipping')
+    } else {
+      const importLine = `import { CipherHacksShield } from './components/CipherHacksShield'\n`
+
+      let updated = appContent
+
+      // Add import at top (after last import)
+      const lastImportIdx = updated.lastIndexOf('\nimport ')
+      if (lastImportIdx !== -1) {
+        const endOfLine = updated.indexOf('\n', lastImportIdx + 1)
+        updated = updated.slice(0, endOfLine + 1) + importLine + updated.slice(endOfLine + 1)
+      } else {
+        updated = importLine + updated
+      }
+
+      // Wrap the return JSX with <CipherHacksShield>
+      const returnMatch = updated.match(/return\s*\(\s*\n?/)
+      if (returnMatch && returnMatch.index !== undefined) {
+        const insertPos = returnMatch.index + returnMatch[0].length
+        const restAfterReturn = updated.slice(insertPos)
+
+        // Find the matching closing paren for the return(...)
+        let depth = 1
+        let closeIdx = 0
+        for (let i = 0; i < restAfterReturn.length; i++) {
+          if (restAfterReturn[i] === '(') depth++
+          if (restAfterReturn[i] === ')') depth--
+          if (depth === 0) { closeIdx = i; break }
+        }
+
+        const jsxContent = restAfterReturn.slice(0, closeIdx)
+        const afterClose = restAfterReturn.slice(closeIdx)
+
+        updated = updated.slice(0, insertPos) +
+          `<CipherHacksShield>\n` +
+          jsxContent +
+          `\n</CipherHacksShield>` +
+          afterClose
+      }
+
+      writeFileSync(appFile, updated)
+      done(`Wrapped App with <CipherHacksShield> in ${appFile.split('/').pop()}`)
+    }
+  } else {
+    warn('Could not find App.tsx/App.jsx — wrap your root component manually:')
+    console.log(`
+  ${CYAN}import { CipherHacksShield } from './components/CipherHacksShield'
+
+  function App() {
+    return (
+      <CipherHacksShield>
+        {/* your existing app */}
+      </CipherHacksShield>
+    )
+  }${RESET}
+`)
+  }
+
+  step(4, 'Adding data-sensitive attributes...')
+  log(`${DIM}Add data-sensitive="true" to any input you want to protect:${RESET}`)
+  console.log(`
+  ${CYAN}<input name="cardNumber" data-sensitive="true" />
+  <input name="cvv" data-sensitive="true" />
+  <input type="password" data-sensitive="true" />${RESET}
+`)
+  done('Client-side protection configured')
+}
+
+// ─── Express / Hono backend setup ───
+
 if (isExpress) {
-  step(2, 'Express detected — add this to your server file:')
+  step(isNext ? 5 : 3, 'Express detected — add this to your server file:')
   console.log(`
   ${CYAN}const { cipherHacksExpress } = require('cipherhacks-shield/express')
   app.use(cipherHacksExpress({ onDetection: 'block' }))${RESET}
+`)
+}
+
+if (isHono && !isNext) {
+  step(5, 'Hono backend detected — add middleware to your Hono server:')
+  console.log(`
+  ${CYAN}// In your Hono server file:
+  import { cipherHacksExpress } from 'cipherhacks-shield/express'
+
+  // Hono can use Express-style middleware via adapter,
+  // or check requests manually:
+  app.use('*', async (c, next) => {
+    const ua = c.req.header('user-agent') || ''
+    // cipherhacks-shield scoring runs on the client side
+    // for React apps. Server-side protection requires
+    // Next.js or Express middleware.
+    await next()
+  })${RESET}
 `)
 }
 
@@ -184,16 +304,37 @@ if (isExpress) {
 
 console.log(`
 ${BOLD}${GREEN}════════════════════════════════════════════════${RESET}
-${BOLD}${GREEN}  CipherHacks Shield is installed and active! ${RESET}
+${BOLD}${GREEN}  CipherHacks Shield is installed and active!   ${RESET}
 ${BOLD}${GREEN}════════════════════════════════════════════════${RESET}
 
   ${DIM}Start your dev server and visit your site.
   Bot requests, headless browsers, and scrapers
   will be detected and blocked automatically.${RESET}
-
-  ${BOLD}Admin dashboard:${RESET} /admin
+${isNext ? `
   ${BOLD}Blocked page:${RESET}    /blocked
   ${BOLD}Events API:${RESET}      /api/cipherhacks/events
-
-  ${DIM}Docs: https://github.com/YOUR_USER/cipherhacks${RESET}
+` : `
+  ${BOLD}Protected:${RESET}       All [data-sensitive] inputs
+  ${BOLD}Honeypots:${RESET}       Auto-injected into forms
+  ${BOLD}Bot detection:${RESET}   Headless browser + typing analysis
+`}
+  ${DIM}Docs: https://github.com/cipherhacks${RESET}
 `)
+
+function blockedPageContent() {
+  return `export default function BlockedPage() {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui' }}>
+      <div style={{ textAlign: 'center', maxWidth: 420, padding: 24 }}>
+        <div style={{ fontSize: 64, marginBottom: 16 }}>🛡️</div>
+        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Access Blocked</h1>
+        <p style={{ color: '#666', lineHeight: 1.6 }}>
+          CipherHacks has detected automated or suspicious activity from your
+          session. This request has been blocked to protect sensitive data.
+        </p>
+      </div>
+    </div>
+  )
+}
+`
+}
