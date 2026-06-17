@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Shield, ShieldCheck, ShieldAlert } from 'lucide-react'
-import { useShieldStatus } from '@cipherhacks/shield/react'
+import { useShieldStatus } from 'cipherhacks-shield/react'
 
 export function ShieldStatusWidget() {
   const status = useShieldStatus()

@@ -22,7 +22,7 @@ function fail(msg) { console.error(`\n${RED}✗ ${msg}${RESET}`); process.exit(1
 
 console.log(`
 ${BOLD}╔════════════════════════════════════════════════╗${RESET}
-${BOLD}║${RESET}  ${CYAN}${BOLD}@cipherhacks/shield${RESET} — Install & Configure   ${BOLD}║${RESET}
+${BOLD}║${RESET}  ${CYAN}${BOLD}cipherhacks-shield${RESET} — Install & Configure   ${BOLD}║${RESET}
 ${BOLD}╚════════════════════════════════════════════════╝${RESET}
 `)
 
@@ -49,9 +49,9 @@ log(`${DIM}Framework: ${isNext ? 'Next.js' : 'Express'}${RESET}`)
 
 // ─── Step 1: Install package ───
 
-step(1, 'Installing @cipherhacks/shield...')
+step(1, 'Installing cipherhacks-shield...')
 
-const hasShield = deps['@cipherhacks/shield']
+const hasShield = deps['cipherhacks-shield']
 if (hasShield) {
   done('Already installed')
 } else {
@@ -59,7 +59,7 @@ if (hasShield) {
     : existsSync(join(cwd, 'yarn.lock')) ? 'yarn'
     : 'npm'
 
-  const installCmd = pm === 'yarn' ? 'yarn add @cipherhacks/shield' : `${pm} install @cipherhacks/shield`
+  const installCmd = pm === 'yarn' ? 'yarn add cipherhacks-shield' : `${pm} install cipherhacks-shield`
   log(`${DIM}$ ${installCmd}${RESET}`)
 
   try {
@@ -81,7 +81,7 @@ if (isNext) {
   if (existsSync(middlewarePath)) {
     warn(`middleware.ts already exists — skipping (add CipherHacks manually)`)
   } else {
-    const content = `import { createCipherHacksMiddleware } from '@cipherhacks/shield/nextjs'
+    const content = `import { createCipherHacksMiddleware } from 'cipherhacks-shield/nextjs'
 
 export const middleware = createCipherHacksMiddleware({
   onDetection: 'block',
@@ -147,7 +147,7 @@ export const config = {
     } else {
       mkdirSync(eventsDir, { recursive: true })
       const eventsRoute = `import { NextResponse } from 'next/server'
-import { addEvent, getEvents, getEventsSince, getStats } from '@cipherhacks/shield'
+import { addEvent, getEvents, getEventsSince, getStats } from 'cipherhacks-shield'
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -175,7 +175,7 @@ export async function POST(request: Request) {
 if (isExpress) {
   step(2, 'Express detected — add this to your server file:')
   console.log(`
-  ${CYAN}const { cipherHacksExpress } = require('@cipherhacks/shield/express')
+  ${CYAN}const { cipherHacksExpress } = require('cipherhacks-shield/express')
   app.use(cipherHacksExpress({ onDetection: 'block' }))${RESET}
 `)
 }

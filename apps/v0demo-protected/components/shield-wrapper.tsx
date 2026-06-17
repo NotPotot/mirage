@@ -1,6 +1,6 @@
 'use client'
 
-import { CipherHacksProvider } from '@cipherhacks/shield/react'
+import { CipherHacksProvider } from 'cipherhacks-shield/react'
 import { ShieldStatusWidget } from './shield-status'
 import type { ReactNode } from 'react'
 

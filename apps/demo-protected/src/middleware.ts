@@ -1,4 +1,4 @@
-import { createCipherHacksMiddleware } from '@cipherhacks/shield/nextjs';
+import { createCipherHacksMiddleware } from 'cipherhacks-shield/nextjs';
 
 export const middleware = createCipherHacksMiddleware({
   routes: {

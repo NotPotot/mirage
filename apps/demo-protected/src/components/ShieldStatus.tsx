@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useShieldStatus } from '@cipherhacks/shield/react';
+import { useShieldStatus } from 'cipherhacks-shield/react';
 
 export function ShieldStatus() {
   const status = useShieldStatus();
