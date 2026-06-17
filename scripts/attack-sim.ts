@@ -339,29 +339,83 @@ async function runSuite(label: string, baseUrl: string): Promise<AttackResult[]>
   return results
 }
 
+function prompt(question: string): Promise<string> {
+  const { createInterface } = require('readline')
+  const rl = createInterface({ input: process.stdin, output: process.stdout })
+  return new Promise((resolve) => {
+    rl.question(question, (answer: string) => {
+      rl.close()
+      resolve(answer.trim())
+    })
+  })
+}
+
 async function main() {
   console.log(`\n${BOLD}╔${'═'.repeat(58)}╗${RESET}`)
   console.log(`${BOLD}║${RESET}          ${CYAN}${BOLD}CipherHacks Attack Simulation${RESET}                  ${BOLD}║${RESET}`)
   console.log(`${BOLD}╚${'═'.repeat(58)}╝${RESET}`)
 
+  // Check for CLI flags first
   const target = process.argv[2]
+  if (target === '--target' && process.argv[3]) {
+    if (process.argv[3] === 'vulnerable') {
+      await runSuite('VULNERABLE — No Shield', VULNERABLE)
+      return
+    } else if (process.argv[3] === 'protected') {
+      await runSuite('PROTECTED — CipherHacks Shield', PROTECTED)
+      return
+    }
+  }
 
-  if (target === '--target' && process.argv[3] === 'vulnerable') {
-    await runSuite('VULNERABLE — No Shield', VULNERABLE)
-  } else if (target === '--target' && process.argv[3] === 'protected') {
-    await runSuite('PROTECTED — CipherHacks Shield', PROTECTED)
-  } else {
-    const vulnResults = await runSuite('VULNERABLE — No Shield', VULNERABLE)
-    await sleep(1000)
-    const protResults = await runSuite('PROTECTED — CipherHacks Shield', PROTECTED)
+  // Interactive menu
+  console.log(`
+  ${BOLD}Select a target:${RESET}
 
-    const vulnExposed = vulnResults.filter((r) => r.success).length
-    const protBlocked = protResults.filter((r) => !r.success).length
+    ${CYAN}1${RESET}  Attack unprotected website     ${DIM}(localhost:3002)${RESET}
+    ${CYAN}2${RESET}  Attack protected demo website  ${DIM}(localhost:3003)${RESET}
+    ${CYAN}3${RESET}  Attack custom URL
+    ${CYAN}4${RESET}  Attack both (side-by-side comparison)
+`)
 
-    console.log(`\n${BOLD}${'═'.repeat(62)}${RESET}`)
-    console.log(`  ${BOLD}Summary:${RESET} CipherHacks blocked ${GREEN}${BOLD}${protBlocked}/${protResults.length}${RESET} attack vectors.`)
-    console.log(`  ${DIM}Vulnerable site exposed to ${vulnExposed}/${vulnResults.length} attacks.${RESET}`)
-    console.log(`${BOLD}${'═'.repeat(62)}${RESET}\n`)
+  const choice = await prompt(`  ${BOLD}Enter choice [1-4]:${RESET} `)
+
+  switch (choice) {
+    case '1':
+      await runSuite('VULNERABLE — No Shield', VULNERABLE)
+      break
+
+    case '2':
+      await runSuite('PROTECTED — CipherHacks Shield', PROTECTED)
+      break
+
+    case '3': {
+      const url = await prompt(`  ${BOLD}Enter target URL${RESET} ${DIM}(e.g. http://localhost:3000):${RESET} `)
+      if (!url) {
+        console.log(`\n  ${RED}No URL provided.${RESET}`)
+        break
+      }
+      const label = await prompt(`  ${BOLD}Label${RESET} ${DIM}(e.g. "My Site" — press Enter to skip):${RESET} `)
+      await runSuite(label || 'Custom Target', url.replace(/\/$/, ''))
+      break
+    }
+
+    case '4': {
+      const vulnResults = await runSuite('VULNERABLE — No Shield', VULNERABLE)
+      await sleep(1000)
+      const protResults = await runSuite('PROTECTED — CipherHacks Shield', PROTECTED)
+
+      const vulnExposed = vulnResults.filter((r) => r.success).length
+      const protBlocked = protResults.filter((r) => !r.success).length
+
+      console.log(`\n${BOLD}${'═'.repeat(62)}${RESET}`)
+      console.log(`  ${BOLD}Summary:${RESET} CipherHacks blocked ${GREEN}${BOLD}${protBlocked}/${protResults.length}${RESET} attack vectors.`)
+      console.log(`  ${DIM}Vulnerable site exposed to ${vulnExposed}/${vulnResults.length} attacks.${RESET}`)
+      console.log(`${BOLD}${'═'.repeat(62)}${RESET}\n`)
+      break
+    }
+
+    default:
+      console.log(`\n  ${RED}Invalid choice. Run again and pick 1-4.${RESET}`)
   }
 }
 
