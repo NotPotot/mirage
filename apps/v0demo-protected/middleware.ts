@@ -5,6 +5,7 @@ export const middleware = createCipherHacksMiddleware({
     '/checkout*': 'maximum',
     '/api/checkout*': 'maximum',
     '/api/products*': 'high',
+    '/api/cipherhacks/report*': 'high',
     '/*': 'standard',
   },
   onDetection: 'block',
@@ -19,5 +20,5 @@ export const middleware = createCipherHacksMiddleware({
 })
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|products/|admin|api/cipherhacks|blocked|.*\\.png$|.*\\.svg$|.*\\.jpg$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|products/|admin|api/cipherhacks/events|blocked|.*\\.png$|.*\\.svg$|.*\\.jpg$).*)'],
 }

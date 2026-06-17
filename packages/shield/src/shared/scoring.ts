@@ -1,7 +1,7 @@
 import type { Signal, ThreatAssessment, DetectionAction } from '../types';
 
-const BLOCK_THRESHOLD = 70;
-const CHALLENGE_THRESHOLD = 40;
+const BLOCK_THRESHOLD = 60;
+const CHALLENGE_THRESHOLD = 35;
 
 export function createAssessment(
   signals: Signal[],
