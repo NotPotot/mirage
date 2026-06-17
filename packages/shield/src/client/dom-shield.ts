@@ -3,6 +3,7 @@ const originalDescriptors = new WeakMap<
   HTMLInputElement,
   PropertyDescriptor | undefined
 >();
+let inInputEvent = false;
 
 export function protectSensitiveFields(selectors: string[]): () => void {
   const selector = selectors.join(', ');
@@ -47,12 +48,13 @@ function shieldElement(el: HTMLInputElement) {
 
   Object.defineProperty(el, 'value', {
     get() {
+      if (inInputEvent) return realValues.get(el) || '';
       return maskValue(realValues.get(el) || '');
     },
     set(newVal: string) {
       realValues.set(el, newVal);
       if (originalDescriptor?.set) {
-        originalDescriptor.set.call(el, maskValue(newVal));
+        originalDescriptor.set.call(el, newVal);
       }
     },
     configurable: true,
@@ -88,6 +90,8 @@ function handleInput(e: Event) {
     const actualValue = descriptor.get.call(el);
     realValues.set(el, actualValue);
   }
+  inInputEvent = true;
+  queueMicrotask(() => { inInputEvent = false; });
 }
 
 function handleSubmit(e: Event) {
