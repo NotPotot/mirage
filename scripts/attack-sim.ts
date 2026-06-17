@@ -7,12 +7,14 @@ const RED = '\x1b[31m'
 const GREEN = '\x1b[32m'
 const YELLOW = '\x1b[33m'
 const CYAN = '\x1b[36m'
+const BLUE = '\x1b[34m'
 const BOLD = '\x1b[1m'
 const DIM = '\x1b[2m'
 const RESET = '\x1b[0m'
 const MAGENTA = '\x1b[35m'
 
-interface AttackResult { name: string; success: boolean; detail: string }
+type AttackStatus = 'exposed' | 'blocked' | 'safe'
+interface AttackResult { name: string; status: AttackStatus; detail: string }
 
 interface SiteRecon {
   pages: string[]
@@ -28,8 +30,14 @@ function cmd(text: string) { console.log(`  ${DIM}$${RESET} ${MAGENTA}${text}${R
 function log(text: string) { console.log(`  ${DIM}   ${text}${RESET}`) }
 async function sleep(ms: number) { return new Promise((r) => setTimeout(r, ms)) }
 
+function printResult(result: AttackResult) {
+  if (result.status === 'exposed') console.log(`\n  ${RED}${BOLD}⚠️  EXPOSED${RESET} ${result.detail}`)
+  else if (result.status === 'blocked') console.log(`\n  ${GREEN}${BOLD}🛡️ BLOCKED${RESET} ${result.detail}`)
+  else console.log(`\n  ${BLUE}${BOLD}✅ SAFE${RESET} ${result.detail}`)
+}
+
 // ═══════════════════════════════════════════════════════
-// RECON — Crawl any site to discover pages, forms, APIs
+// RECON
 // ═══════════════════════════════════════════════════════
 
 async function recon(baseUrl: string): Promise<SiteRecon> {
@@ -48,7 +56,6 @@ async function recon(baseUrl: string): Promise<SiteRecon> {
     const browser = await chromium.launch({ headless: true })
     const page = await browser.newPage()
 
-    // 1. Collect all internal links from homepage
     await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 10000 })
     const links = await page.evaluate((origin: string) => {
       const paths = new Set<string>()
@@ -65,13 +72,11 @@ async function recon(baseUrl: string): Promise<SiteRecon> {
     result.pages = ['/', ...links.filter(l => l !== '/').slice(0, 20)]
     log(`Found ${result.pages.length} pages: ${result.pages.slice(0, 6).join(', ')}${result.pages.length > 6 ? '...' : ''}`)
 
-    // 2. Visit each page and scan for forms/inputs
     const sensitiveKeywords = ['card', 'credit', 'cvv', 'ccv', 'expir', 'password', 'pass', 'ssn', 'social', 'secret', 'pin', 'routing', 'account', 'bank', 'payment', 'login', 'signin', 'auth']
 
     for (const path of result.pages.slice(0, 12)) {
       try {
         await page.goto(`${baseUrl}${path}`, { waitUntil: 'networkidle', timeout: 6000 })
-
         const formData = await page.evaluate(() => {
           const inputs: Array<{ name: string; type: string; id: string }> = []
           document.querySelectorAll('input, textarea, select').forEach((el) => {
@@ -80,27 +85,22 @@ async function recon(baseUrl: string): Promise<SiteRecon> {
           })
           return inputs
         })
-
         if (formData.length > 0) result.formsOnPages.push({ page: path, inputs: formData })
-
         const hasSensitive = formData.some((inp) => {
           const combined = `${inp.name} ${inp.id} ${inp.type}`.toLowerCase()
           return sensitiveKeywords.some((kw) => combined.includes(kw))
         })
-
         if (hasSensitive) {
           result.sensitivePages.push(path)
           for (const inp of formData) {
             const combined = `${inp.name} ${inp.id}`.toLowerCase()
-            if (sensitiveKeywords.some((kw) => combined.includes(kw))) {
+            if (sensitiveKeywords.some((kw) => combined.includes(kw)))
               result.sensitiveInputNames.push(inp.name || inp.id)
-            }
           }
         }
       } catch {}
     }
 
-    // 3. Probe for API endpoints
     const commonApis = ['/api', '/api/products', '/api/checkout', '/api/users', '/api/auth',
       '/api/login', '/api/cipherhacks/report', '/api/contact', '/api/search', '/api/data']
     for (const endpoint of commonApis) {
@@ -112,14 +112,10 @@ async function recon(baseUrl: string): Promise<SiteRecon> {
 
     await browser.close()
 
-    // Pick targets
-    if (result.sensitivePages.length > 0) {
-      result.bestTargetPage = result.sensitivePages[0]
-    } else if (result.formsOnPages.length > 0) {
+    if (result.sensitivePages.length > 0) result.bestTargetPage = result.sensitivePages[0]
+    else if (result.formsOnPages.length > 0)
       result.bestTargetPage = result.formsOnPages.sort((a, b) => b.inputs.length - a.inputs.length)[0].page
-    }
 
-    // Pick a non-form page for flood testing
     const nonFormPages = result.pages.filter(p => p !== result.bestTargetPage)
     result.bestFloodPage = nonFormPages[0] || '/'
 
@@ -129,7 +125,6 @@ async function recon(baseUrl: string): Promise<SiteRecon> {
     log(`API endpoints: ${result.apiEndpoints.length > 0 ? result.apiEndpoints.join(', ') : 'none found'}`)
     log(`Best attack target: ${result.bestTargetPage}`)
     log(`Flood target: ${result.bestFloodPage}`)
-
     console.log(`\n  ${GREEN}${BOLD}✓ Recon complete${RESET}`)
   } catch (e: any) {
     log(`Recon error: ${e.message.slice(0, 80)}`)
@@ -140,7 +135,7 @@ async function recon(baseUrl: string): Promise<SiteRecon> {
 }
 
 // ═══════════════════════════════════════════════════════
-// ATTACKS — All adaptive, no hardcoded paths
+// ATTACKS
 // ═══════════════════════════════════════════════════════
 
 async function attackBotScrape(baseUrl: string, targetPage: string): Promise<AttackResult> {
@@ -155,14 +150,17 @@ async function attackBotScrape(baseUrl: string, targetPage: string): Promise<Att
       headers: { 'User-Agent': 'GPTBot/1.0 (+https://openai.com/gptbot)' },
       redirect: 'manual',
     })
-
     const score = res.headers.get('x-cipherhacks-score') || '?'
     const location = res.headers.get('location') || ''
     log(`HTTP ${res.status} | X-CipherHacks-Score: ${score}`)
 
     if (res.status === 307 || res.status === 308 || location.includes('blocked')) {
       log(`Location: ${location}`)
-      return { name: 'Bot UA Scrape', success: false, detail: `HTTP ${res.status} → blocked (score: ${score})` }
+      return { name: 'Bot UA Scrape', status: 'blocked', detail: `HTTP ${res.status} → blocked (score: ${score})` }
+    }
+
+    if (res.status === 403) {
+      return { name: 'Bot UA Scrape', status: 'blocked', detail: `HTTP 403 Access Denied — bot detected (score: ${score})` }
     }
 
     const html = await res.text()
@@ -170,9 +168,12 @@ async function attackBotScrape(baseUrl: string, targetPage: string): Promise<Att
     const forms = html.match(/<form[^>]*>/gi) || []
     log(`Response: ${html.length} bytes, ${forms.length} form(s), ${inputs.length} input(s)`)
 
-    return { name: 'Bot UA Scrape', success: true, detail: `Got HTML — ${inputs.length} input(s), ${forms.length} form(s) exposed` }
+    if (inputs.length === 0 && forms.length === 0) {
+      return { name: 'Bot UA Scrape', status: 'safe', detail: 'No forms or inputs found — nothing to extract' }
+    }
+    return { name: 'Bot UA Scrape', status: 'exposed', detail: `Got HTML — ${inputs.length} input(s), ${forms.length} form(s) exposed` }
   } catch (e: any) {
-    return { name: 'Bot UA Scrape', success: false, detail: `Connection failed: ${e.message}` }
+    return { name: 'Bot UA Scrape', status: 'blocked', detail: `Connection failed: ${e.message}` }
   }
 }
 
@@ -199,24 +200,25 @@ async function attackDomScrape(baseUrl: string, targetPage: string, sensitiveInp
 
     if (finalUrl.includes('blocked')) {
       await browser.close()
-      return { name: 'Headless DOM Scrape', success: false, detail: 'Redirected to /blocked — headless browser detected' }
+      return { name: 'Headless DOM Scrape', status: 'blocked', detail: 'Redirected to /blocked — headless browser detected' }
     }
 
     const allInputs = await page.evaluate(() => {
       const results: Array<{ name: string; id: string; type: string; value: string; sensitive: boolean }> = []
       document.querySelectorAll('input').forEach((el) => {
         const input = el as HTMLInputElement
-        results.push({
-          name: input.name, id: input.id, type: input.type,
-          value: input.value, sensitive: input.hasAttribute('data-sensitive'),
-        })
+        results.push({ name: input.name, id: input.id, type: input.type, value: input.value, sensitive: input.hasAttribute('data-sensitive') })
       })
       return results
     })
 
     log(`Found ${allInputs.length} input(s) on page`)
 
-    // Find the best input to try filling
+    if (allInputs.length === 0) {
+      await browser.close()
+      return { name: 'Headless DOM Scrape', status: 'safe', detail: 'No inputs found on page — nothing to scrape' }
+    }
+
     const sensitiveKw = ['card', 'credit', 'cvv', 'password', 'pass', 'ssn', 'pin', 'secret', 'account']
     const targetInput = sensitiveInputs.length > 0
       ? allInputs.find(i => sensitiveInputs.some(s => (i.name + i.id).toLowerCase().includes(s.toLowerCase())))
@@ -229,7 +231,6 @@ async function attackDomScrape(baseUrl: string, targetPage: string, sensitiveInp
     if (targetInput) {
       const selector = targetInput.id ? `#${targetInput.id}` : `input[name="${targetInput.name}"]`
       const testValue = targetInput.type === 'password' ? 'P@ssw0rd123!' : '4111111111111111'
-
       try {
         await page.fill(selector, testValue)
         await sleep(200)
@@ -237,28 +238,23 @@ async function attackDomScrape(baseUrl: string, targetPage: string, sensitiveInp
           const el = document.querySelector(sel) as HTMLInputElement
           return el?.value || ''
         }, selector)
-
         log(`Filled "${targetInput.name || targetInput.id}" (${targetInput.type}) → read back: "${readBack}"`)
         await browser.close()
-
         if (readBack.includes('****') || readBack.includes('••••') || (testValue === '4111111111111111' && !readBack.includes('4111'))) {
-          return { name: 'Headless DOM Scrape', success: false, detail: `DOM value masked: "${readBack}"` }
+          return { name: 'Headless DOM Scrape', status: 'blocked', detail: `DOM value masked: "${readBack}"` }
         }
-        return { name: 'Headless DOM Scrape', success: true, detail: `Read value from DOM: "${readBack}"` }
+        return { name: 'Headless DOM Scrape', status: 'exposed', detail: `Read value from DOM: "${readBack}"` }
       } catch {
         await browser.close()
-        return { name: 'Headless DOM Scrape', success: true, detail: `${allInputs.length} inputs exposed, fill attempt failed` }
+        return { name: 'Headless DOM Scrape', status: 'exposed', detail: `${allInputs.length} inputs found, fill attempt failed` }
       }
     }
 
     await browser.close()
-    if (allInputs.length > 0) {
-      const names = allInputs.filter(i => i.name).map(i => i.name).slice(0, 5).join(', ')
-      return { name: 'Headless DOM Scrape', success: true, detail: `${allInputs.length} inputs exposed: ${names}` }
-    }
-    return { name: 'Headless DOM Scrape', success: true, detail: 'Page loaded — no inputs found to test' }
+    const names = allInputs.filter(i => i.name).map(i => i.name).slice(0, 5).join(', ')
+    return { name: 'Headless DOM Scrape', status: 'exposed', detail: `${allInputs.length} inputs accessible: ${names}` }
   } catch (e: any) {
-    return { name: 'Headless DOM Scrape', success: false, detail: `${e.message.slice(0, 100)}` }
+    return { name: 'Headless DOM Scrape', status: 'blocked', detail: `${e.message.slice(0, 100)}` }
   }
 }
 
@@ -277,17 +273,18 @@ async function attackHoneypot(baseUrl: string, targetPage: string): Promise<Atta
     const { chromium } = await import('playwright')
     const browser = await chromium.launch({ headless: true })
     const page = await browser.newPage()
-
     await page.goto(`${baseUrl}${targetPage}`, { waitUntil: 'networkidle', timeout: 10000 })
 
     if (page.url().includes('blocked')) {
       await browser.close()
-      return { name: 'Honeypot Trap', success: false, detail: 'Blocked before reaching page' }
+      return { name: 'Honeypot Trap', status: 'blocked', detail: 'Blocked before reaching page' }
     }
 
-    const honeypots = await page.evaluate(() => {
+    const { honeypots, totalInputs } = await page.evaluate(() => {
       const hidden: string[] = []
+      let total = 0
       document.querySelectorAll('input').forEach((el) => {
+        total++
         const style = window.getComputedStyle(el)
         const rect = el.getBoundingClientRect()
         const isHidden =
@@ -298,19 +295,22 @@ async function attackHoneypot(baseUrl: string, targetPage: string): Promise<Atta
           (el.tabIndex === -1 && (rect.width === 0 || style.opacity === '0'))
         if (isHidden && el.name) hidden.push(el.name)
       })
-      return hidden
+      return { honeypots: hidden, totalInputs: total }
     })
 
-    log(`Scanned all inputs — found ${honeypots.length} hidden field(s)`)
+    log(`Scanned ${totalInputs} input(s) — found ${honeypots.length} hidden field(s)`)
     if (honeypots.length > 0) log(`Honeypot names: ${honeypots.join(', ')}`)
     await browser.close()
 
-    if (honeypots.length === 0) {
-      return { name: 'Honeypot Trap', success: true, detail: 'No honeypot fields found — forms unprotected' }
+    if (totalInputs === 0) {
+      return { name: 'Honeypot Trap', status: 'safe', detail: 'No inputs found on page — no forms to target' }
     }
-    return { name: 'Honeypot Trap', success: false, detail: `${honeypots.length} honeypot(s) detected: ${honeypots.join(', ')}` }
+    if (honeypots.length > 0) {
+      return { name: 'Honeypot Trap', status: 'blocked', detail: `${honeypots.length} honeypot(s) detected: ${honeypots.join(', ')}` }
+    }
+    return { name: 'Honeypot Trap', status: 'exposed', detail: 'No honeypot fields found — forms unprotected' }
   } catch (e: any) {
-    return { name: 'Honeypot Trap', success: false, detail: `${e.message.slice(0, 100)}` }
+    return { name: 'Honeypot Trap', status: 'blocked', detail: `${e.message.slice(0, 100)}` }
   }
 }
 
@@ -355,9 +355,9 @@ async function attackRateFlood(baseUrl: string, floodPage: string): Promise<Atta
   log(`Total: ${succeeded} succeeded, ${firstFail > 0 ? `blocked at request ${firstFail}` : 'no blocking'}`)
 
   if (firstFail > 0) {
-    return { name: 'Rate Limit Flood', success: false, detail: `429 after ${firstFail} requests (${succeeded}/${total} got through)` }
+    return { name: 'Rate Limit Flood', status: 'blocked', detail: `429 after ${firstFail} requests (${succeeded}/${total} got through)` }
   }
-  return { name: 'Rate Limit Flood', success: true, detail: `${succeeded}/${total} requests succeeded — no rate limiting` }
+  return { name: 'Rate Limit Flood', status: 'exposed', detail: `${succeeded}/${total} requests succeeded — no rate limiting` }
 }
 
 async function attackPromptInjection(baseUrl: string, targetPage: string, apiEndpoints: string[]): Promise<AttackResult> {
@@ -392,19 +392,23 @@ async function attackPromptInjection(baseUrl: string, targetPage: string, apiEnd
     log(`HTTP ${res.status} | X-CipherHacks-Score: ${score}`)
 
     if (res.status === 307 || res.status === 308 || location.includes('blocked')) {
-      return { name: 'Prompt Injection', success: false, detail: `Blocked — structured prompt detected (score: ${score})` }
+      return { name: 'Prompt Injection', status: 'blocked', detail: `Blocked — structured prompt detected (score: ${score})` }
     }
     if (parseInt(score) >= 35) {
-      return { name: 'Prompt Injection', success: false, detail: `Flagged with threat score ${score}` }
+      return { name: 'Prompt Injection', status: 'blocked', detail: `Flagged with threat score ${score}` }
     }
-    return { name: 'Prompt Injection', success: true, detail: `Payload accepted without detection (score: ${score})` }
+
+    if (apiEndpoints.length === 0) {
+      return { name: 'Prompt Injection', status: 'safe', detail: 'No API endpoints found — no injection surface' }
+    }
+    return { name: 'Prompt Injection', status: 'exposed', detail: `Payload accepted without detection (score: ${score})` }
   } catch (e: any) {
-    return { name: 'Prompt Injection', success: false, detail: `${e.message.slice(0, 100)}` }
+    return { name: 'Prompt Injection', status: 'blocked', detail: `${e.message.slice(0, 100)}` }
   }
 }
 
 // ═══════════════════════════════════════════════════════
-// RUNNER — Always recon first, then attack
+// RUNNER
 // ═══════════════════════════════════════════════════════
 
 async function runSuite(label: string, baseUrl: string): Promise<AttackResult[]> {
@@ -428,20 +432,25 @@ async function runSuite(label: string, baseUrl: string): Promise<AttackResult[]>
     console.log(`\n${BOLD}── [${i + 1}/${attacks.length}] ${name} ──${RESET}`)
     const result = await fn()
     results.push(result)
-    if (result.success) console.log(`\n  ${RED}${BOLD}⚠️  EXPOSED${RESET} ${result.detail}`)
-    else console.log(`\n  ${GREEN}${BOLD}🛡️ BLOCKED${RESET} ${result.detail}`)
+    printResult(result)
     await sleep(500)
   }
 
-  const exposed = results.filter((r) => r.success).length
-  const blocked = results.filter((r) => !r.success).length
+  const exposed = results.filter((r) => r.status === 'exposed').length
+  const blocked = results.filter((r) => r.status === 'blocked').length
+  const safe = results.filter((r) => r.status === 'safe').length
+
   console.log(`\n${BOLD}${'─'.repeat(62)}${RESET}`)
-  if (exposed === results.length)
-    console.log(`  ${RED}${BOLD}RESULT: ${exposed}/${results.length} attacks succeeded. Site is VULNERABLE.${RESET}`)
-  else if (blocked === results.length)
+  if (exposed === 0 && blocked === 0) {
+    console.log(`  ${BLUE}${BOLD}RESULT: Site is SAFE & SECURE — nothing to extract.${RESET}`)
+  } else if (exposed === 0) {
     console.log(`  ${GREEN}${BOLD}RESULT: 0/${results.length} attacks succeeded. Site is PROTECTED.${RESET}`)
-  else
-    console.log(`  ${YELLOW}${BOLD}RESULT: ${exposed}/${results.length} exposed, ${blocked} blocked.${RESET}`)
+    if (safe > 0) console.log(`  ${DIM}${safe} test(s) found no attack surface.${RESET}`)
+  } else if (blocked === 0 && safe === 0) {
+    console.log(`  ${RED}${BOLD}RESULT: ${exposed}/${results.length} attacks succeeded. Site is VULNERABLE.${RESET}`)
+  } else {
+    console.log(`  ${YELLOW}${BOLD}RESULT: ${exposed} exposed, ${blocked} blocked, ${safe} safe.${RESET}`)
+  }
   console.log(`${BOLD}${'─'.repeat(62)}${RESET}`)
 
   return results
@@ -499,10 +508,12 @@ async function main() {
       const vulnResults = await runSuite('VULNERABLE — No Shield', VULNERABLE)
       await sleep(1000)
       const protResults = await runSuite('PROTECTED — CipherHacks Shield', PROTECTED)
-      const vulnExposed = vulnResults.filter((r) => r.success).length
-      const protBlocked = protResults.filter((r) => !r.success).length
+      const vulnExposed = vulnResults.filter((r) => r.status === 'exposed').length
+      const protBlocked = protResults.filter((r) => r.status === 'blocked').length
+      const protSafe = protResults.filter((r) => r.status === 'safe').length
       console.log(`\n${BOLD}${'═'.repeat(62)}${RESET}`)
       console.log(`  ${BOLD}Summary:${RESET} CipherHacks blocked ${GREEN}${BOLD}${protBlocked}/${protResults.length}${RESET} attack vectors.`)
+      if (protSafe > 0) console.log(`  ${DIM}${protSafe} test(s) found no attack surface — site is clean.${RESET}`)
       console.log(`  ${DIM}Vulnerable site exposed to ${vulnExposed}/${vulnResults.length} attacks.${RESET}`)
       console.log(`${BOLD}${'═'.repeat(62)}${RESET}\n`)
       break

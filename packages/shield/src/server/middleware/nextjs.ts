@@ -64,6 +64,14 @@ export function createCipherHacksMiddleware(
       return NextResponse.redirect(new URL(config.blockPage, request.url));
     }
 
+    if (assessment.action === 'challenge' && config.onDetection !== 'monitor') {
+      logger.threat(`Challenged/blocked: ${requestInfo.ip} (score: ${assessment.score})`, assessment);
+      return new NextResponse(
+        '<!DOCTYPE html><html><body><h1>Access Denied</h1><p>Suspicious activity detected.</p></body></html>',
+        { status: 403, headers: { 'Content-Type': 'text/html', 'X-CipherHacks-Score': String(assessment.score) } }
+      );
+    }
+
     if (slowdownMs >= 2000) {
       logger.threat(
         `Excessive repetition from ${requestInfo.ip} — blocking (slowdown: ${slowdownMs}ms)`,

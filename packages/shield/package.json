@@ -14,17 +14,20 @@
     "./nextjs": {
       "types": "./dist/nextjs.d.ts",
       "import": "./dist/nextjs.mjs",
-      "require": "./dist/nextjs.js"
+      "require": "./dist/nextjs.js",
+      "default": "./dist/nextjs.mjs"
     },
     "./express": {
       "types": "./dist/express.d.ts",
       "import": "./dist/express.mjs",
-      "require": "./dist/express.js"
+      "require": "./dist/express.js",
+      "default": "./dist/express.mjs"
     },
     "./react": {
       "types": "./dist/react.d.ts",
       "import": "./dist/react.mjs",
-      "require": "./dist/react.js"
+      "require": "./dist/react.js",
+      "default": "./dist/react.mjs"
     },
     "./client": "./dist/client.global.js"
   },

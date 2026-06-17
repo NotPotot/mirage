@@ -8,7 +8,7 @@ export function analyzeUserAgent(userAgent: string): Signal[] {
   const botMatch = matchesBotPattern(userAgent);
   if (botMatch) {
     signals.push(
-      signal('known-bot-ua', 35, 1, `Matched known bot pattern: ${botMatch}`)
+      signal('known-bot-ua', 45, 1, `Matched known bot pattern: ${botMatch}`)
     );
   }
 
