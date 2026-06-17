@@ -1,15 +1,16 @@
 {
-  "name": "v0demo",
+  "name": "v0demo-protected",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3002",
+    "dev": "next dev --port 3003",
     "build": "next build",
-    "start": "next start --port 3002",
+    "start": "next start --port 3003",
     "lint": "eslint ."
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
+    "@cipherhacks/shield": "*",
     "@vercel/analytics": "1.6.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
