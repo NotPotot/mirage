@@ -14,6 +14,7 @@ export const middleware = createCipherHacksMiddleware({
     maxRequests: 30,
     aiPatternMultiplier: 0.5,
   },
+  eventsUrl: '/api/cipherhacks/events',
   debug: true,
 })
 

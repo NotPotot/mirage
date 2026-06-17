@@ -29,6 +29,7 @@ export interface ShieldConfig {
   blockPage: string;
   rateLimit: RateLimitConfig;
   debug: boolean;
+  eventsUrl?: string;
 }
 
 export interface ClientConfig {

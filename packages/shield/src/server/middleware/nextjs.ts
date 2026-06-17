@@ -1,7 +1,6 @@
 import { mergeConfig } from '../../config';
 import { scoreRequest } from '../fingerprint';
 import { generateCSPHeader } from '../csp';
-import { addEvent } from '../event-store';
 import { createLogger } from '../../shared/logger';
 import type { ShieldConfig, SensitivityLevel, RequestInfo } from '../../types';
 
@@ -25,18 +24,26 @@ export function createCipherHacksMiddleware(
       sensitivity
     );
 
-    addEvent({
-      id: assessment.requestId,
-      timestamp: assessment.timestamp,
-      ip: requestInfo.ip,
-      userAgent: requestInfo.userAgent,
-      url: pathname,
-      method: request.method,
-      threatScore: assessment.score,
-      action: rateLimited ? 'block' : assessment.action,
-      signals: assessment.signals,
-      slowdownMs,
-    });
+    if (config.eventsUrl) {
+      const event = {
+        id: assessment.requestId,
+        timestamp: assessment.timestamp,
+        ip: requestInfo.ip,
+        userAgent: requestInfo.userAgent,
+        url: pathname,
+        method: request.method,
+        threatScore: assessment.score,
+        action: rateLimited ? 'block' : assessment.action,
+        signals: assessment.signals,
+        slowdownMs,
+      };
+      const eventsOrigin = new URL(request.url).origin;
+      fetch(`${eventsOrigin}${config.eventsUrl}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(event),
+      }).catch(() => {});
+    }
 
     if (config.debug) {
       logger.debug(`${request.method} ${pathname}`, {
