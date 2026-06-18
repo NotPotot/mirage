@@ -24,6 +24,7 @@ export interface RateLimitConfig {
 }
 
 export interface ShieldConfig {
+  enabled: boolean;
   routes: Record<string, SensitivityLevel>;
   onDetection: OnDetection;
   blockPage: string;

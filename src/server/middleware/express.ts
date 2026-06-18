@@ -30,6 +30,8 @@ export function mirageExpress(
   const defaultSensitivity = userConfig.sensitivity || 'standard';
 
   return function mirageMiddleware(req: Req, res: Res, next: NextFn) {
+    if (!config.enabled) return next();
+
     const requestInfo = extractRequestInfo(req);
     const sensitivity = matchRoute(req.url, config.routes) || defaultSensitivity;
 

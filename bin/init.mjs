@@ -20,6 +20,69 @@ function done(msg) { log(`${GREEN}[OK]${RESET} ${msg}`) }
 function warn(msg) { log(`${YELLOW}[!]${RESET} ${msg}`) }
 function fail(msg) { console.error(`\n${RED}[X] ${msg}${RESET}`); process.exit(1) }
 
+// --- Toggle commands: npx mirage on / off / status ---
+
+const command = process.argv[2]
+
+if (command === 'on' || command === 'off' || command === 'status') {
+  const envPath = join(cwd, '.env')
+  const envLocalPath = join(cwd, '.env.local')
+  const targetEnv = existsSync(envLocalPath) ? envLocalPath : envPath
+
+  function readEnv(filePath) {
+    if (!existsSync(filePath)) return ''
+    return readFileSync(filePath, 'utf-8')
+  }
+
+  function setEnvVar(filePath, key, value) {
+    let content = readEnv(filePath)
+    const regex = new RegExp(`^${key}=.*$`, 'm')
+    const line = `${key}=${value}`
+    if (regex.test(content)) {
+      content = content.replace(regex, line)
+    } else {
+      content = content.trimEnd() + (content.length > 0 ? '\n' : '') + line + '\n'
+    }
+    writeFileSync(filePath, content)
+  }
+
+  function getEnvVar(key) {
+    for (const p of [envLocalPath, envPath]) {
+      const content = readEnv(p)
+      const match = content.match(new RegExp(`^${key}=(.*)$`, 'm'))
+      if (match) return { value: match[1].trim(), file: p }
+    }
+    return null
+  }
+
+  if (command === 'status') {
+    const entry = getEnvVar('MIRAGE_ENABLED')
+    if (!entry || entry.value === 'true' || entry.value === '1') {
+      console.log(`\n  ${GREEN}${BOLD}Mirage Shield is ON${RESET} ${DIM}(active — blocking threats)${RESET}`)
+    } else {
+      console.log(`\n  ${YELLOW}${BOLD}Mirage Shield is OFF${RESET} ${DIM}(disabled — all requests pass through)${RESET}`)
+    }
+    if (entry) console.log(`  ${DIM}Set in ${entry.file}: MIRAGE_ENABLED=${entry.value}${RESET}`)
+    else console.log(`  ${DIM}No MIRAGE_ENABLED set — defaults to on${RESET}`)
+    console.log(`\n  ${DIM}Toggle with: npx mirage on / npx mirage off${RESET}\n`)
+    process.exit(0)
+  }
+
+  const enabled = command === 'on'
+  setEnvVar(targetEnv, 'MIRAGE_ENABLED', String(enabled))
+
+  if (enabled) {
+    console.log(`\n  ${GREEN}${BOLD}Mirage Shield is now ON${RESET}`)
+    console.log(`  ${DIM}All requests will be scored and threats will be blocked.${RESET}`)
+  } else {
+    console.log(`\n  ${YELLOW}${BOLD}Mirage Shield is now OFF${RESET}`)
+    console.log(`  ${DIM}Middleware is disabled — all requests pass through unscored.${RESET}`)
+  }
+  console.log(`  ${DIM}Updated ${targetEnv}${RESET}`)
+  console.log(`\n  ${DIM}Restart your dev server for this to take effect.${RESET}\n`)
+  process.exit(0)
+}
+
 console.log(`
 ${BOLD}+================================================+${RESET}
 ${BOLD}|${RESET}  ${CYAN}${BOLD}@mirageshield/mirage${RESET} -- Install & Configure  ${BOLD}|${RESET}

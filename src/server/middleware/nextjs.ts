@@ -12,6 +12,9 @@ export function createMirageMiddleware(
 
   return async function mirageMiddleware(request: Request) {
     const { NextResponse } = await import('next/server');
+
+    if (!config.enabled) return NextResponse.next();
+
     const url = new URL(request.url);
     const pathname = url.pathname;
 
