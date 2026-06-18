@@ -26,8 +26,10 @@ export type Order = {
     state: string
     zip: string
   }
-  // Stored only in the browser for this demo. Card number is masked.
   maskedCard: string
+  cardNumber: string
+  cvv: string
+  expiry: string
   cardholder: string
   items: { name: string; price: number; quantity: number }[]
   total: number

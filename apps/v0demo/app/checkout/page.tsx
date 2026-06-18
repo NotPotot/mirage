@@ -105,6 +105,9 @@ export default function CheckoutPage() {
         createdAt: new Date().toISOString(),
         customer: { ...shipping },
         maskedCard: maskCard(cardNumber),
+        cardNumber: cardNumber.replace(/\s/g, ''),
+        cvv,
+        expiry,
         cardholder: cardholder.trim(),
         items: cart.map((item) => ({
           name: item.product.name,
@@ -266,12 +269,14 @@ export default function CheckoutPage() {
                   <div className="mt-5 grid gap-4">
                     <Field
                       label="Cardholder name"
+                      name="cardholder"
                       value={cardholder}
                       onChange={setCardholder}
                       placeholder="Jordan Rivera"
                     />
                     <Field
                       label="Card number"
+                      name="cardNumber"
                       value={cardNumber}
                       onChange={(v) => setCardNumber(formatCardNumber(v))}
                       placeholder="4111 1111 1111 1111"
@@ -280,6 +285,7 @@ export default function CheckoutPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <Field
                         label="Expiration"
+                        name="expiry"
                         value={expiry}
                         onChange={(v) => setExpiry(formatExpiry(v))}
                         placeholder="MM/YY"
@@ -287,6 +293,7 @@ export default function CheckoutPage() {
                       />
                       <Field
                         label="CVV"
+                        name="cvv"
                         value={cvv}
                         onChange={(v) => setCvv(v.replace(/\D/g, '').slice(0, 3))}
                         placeholder="123"
@@ -406,6 +413,7 @@ function Field({
   onChange,
   placeholder,
   type = 'text',
+  name,
   className,
   autoComplete,
   inputMode,
@@ -415,6 +423,7 @@ function Field({
   onChange: (value: string) => void
   placeholder?: string
   type?: string
+  name?: string
   className?: string
   autoComplete?: string
   inputMode?: 'text' | 'numeric' | 'email'
@@ -424,6 +433,7 @@ function Field({
       <span className="text-sm font-medium">{label}</span>
       <input
         type={type}
+        name={name}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

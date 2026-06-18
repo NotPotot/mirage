@@ -91,7 +91,7 @@ function handleInput(e: Event) {
     realValues.set(el, actualValue);
   }
   inInputEvent = true;
-  queueMicrotask(() => { inInputEvent = false; });
+  setTimeout(() => { inInputEvent = false; }, 0);
 }
 
 function handleSubmit(e: Event) {

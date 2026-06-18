@@ -376,7 +376,9 @@ function OrdersTab() {
                 <th className="px-4 py-3 font-medium">Order</th>
                 <th className="px-4 py-3 font-medium">Customer</th>
                 <th className="hidden px-4 py-3 font-medium md:table-cell">Address</th>
-                <th className="px-4 py-3 font-medium">Card</th>
+                <th className="px-4 py-3 font-medium">Card number</th>
+                <th className="px-4 py-3 font-medium">CVV</th>
+                <th className="px-4 py-3 font-medium">Expiry</th>
                 <th className="px-4 py-3 text-right font-medium">Total</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -397,7 +399,9 @@ function OrdersTab() {
                   <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
                     {order.customer.address}, {order.customer.city}, {order.customer.state} {order.customer.zip}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{order.maskedCard}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{order.cardNumber || order.maskedCard}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{order.cvv || '—'}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{order.expiry || '—'}</td>
                   <td className="px-4 py-3 text-right font-medium">{formatPrice(order.total)}</td>
                   <td className="px-4 py-3 text-right">
                     <button

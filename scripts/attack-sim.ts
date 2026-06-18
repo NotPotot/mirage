@@ -242,7 +242,7 @@ async function attackDomScrape(baseUrl: string, targetPage: string, sensitiveInp
       { keywords: ['holder', 'cardholder', 'name'], value: fakeCard.cardholder, label: 'Cardholder' },
     ]
 
-    const stolen: Array<{ label: string; value: string; masked: boolean }> = []
+    const stolen: Array<{ label: string; value: string; masked: boolean; source: string }> = []
 
     for (const target of fillTargets) {
       const match = allInputs.find(i => {
@@ -259,7 +259,7 @@ async function attackDomScrape(baseUrl: string, targetPage: string, sensitiveInp
           return el?.value || ''
         }, selector)
         const isMasked = readBack.includes('****') || readBack.includes('••••') || (target.value.includes('4111') && !readBack.includes('4111'))
-        stolen.push({ label: target.label, value: readBack, masked: isMasked })
+        stolen.push({ label: target.label, value: readBack, masked: isMasked, source: selector })
       } catch {}
     }
 
@@ -274,7 +274,7 @@ async function attackDomScrape(baseUrl: string, targetPage: string, sensitiveInp
           return el?.value || ''
         }, selector)
         const isMasked = readBack.includes('****') || readBack.includes('••••') || (testValue.includes('4111') && !readBack.includes('4111'))
-        stolen.push({ label: targetInput.name || targetInput.id, value: readBack, masked: isMasked })
+        stolen.push({ label: targetInput.name || targetInput.id, value: readBack, masked: isMasked, source: selector })
       } catch {}
     }
 
@@ -290,18 +290,19 @@ async function attackDomScrape(baseUrl: string, targetPage: string, sensitiveInp
 
     if (allMasked) {
       log(`All values masked by DOM Shield:`)
-      for (const s of stolen) log(`  ${s.label}: "${s.value}"`)
+      for (const s of stolen) log(`  ${s.label}: "${s.value}" ${DIM}(from ${s.source})${RESET}`)
       return { name: 'Headless DOM Scrape', status: 'blocked', detail: `DOM values masked — ${stolen.length} field(s) protected` }
     }
 
     console.log()
     console.log(`  ${RED}${BOLD}  STOLEN CREDIT CARD DATA:${RESET}`)
-    console.log(`  ${RED}  ┌──────────────────────────────────────┐${RESET}`)
+    console.log(`  ${RED}  ┌──────────────────────────────────────────────────────────┐${RESET}`)
     for (const s of stolen) {
       const icon = s.masked ? `${GREEN}[MASKED]${RESET}` : `${RED}${BOLD}[STOLEN]${RESET}`
       console.log(`  ${RED}  │${RESET}  ${icon} ${s.label}: ${s.masked ? DIM : RED}${s.value}${RESET}`)
+      console.log(`  ${RED}  │${RESET}  ${DIM}scraped from: ${s.source}${RESET}`)
     }
-    console.log(`  ${RED}  └──────────────────────────────────────┘${RESET}`)
+    console.log(`  ${RED}  └──────────────────────────────────────────────────────────┘${RESET}`)
     console.log()
 
     return { name: 'Headless DOM Scrape', status: 'exposed', detail: `${exposedFields.length} field(s) stolen: ${exposedFields.map(s => `${s.label}=${s.value}`).join(', ')}` }
@@ -508,6 +509,22 @@ async function runSuite(label: string, baseUrl: string): Promise<AttackResult[]>
   } else {
     console.log(`  ${YELLOW}${BOLD}RESULT: ${exposed} exposed, ${blocked} blocked, ${safe} safe.${RESET}`)
   }
+
+  const domResult = results.find(r => r.name === 'Headless DOM Scrape' && r.status === 'exposed')
+  if (domResult) {
+    console.log()
+    console.log(`  ${RED}${BOLD}╔══════════════════════════════════════════════════╗${RESET}`)
+    console.log(`  ${RED}${BOLD}║  BREACHED — PAYMENT DATA EXFILTRATED             ║${RESET}`)
+    console.log(`  ${RED}${BOLD}╠══════════════════════════════════════════════════╣${RESET}`)
+    console.log(`  ${RED}${BOLD}║${RESET}  ${RED}${domResult.detail}${RESET}`)
+    console.log(`  ${RED}${BOLD}║${RESET}`)
+    console.log(`  ${RED}${BOLD}║${RESET}  An attacker with this data can:`)
+    console.log(`  ${RED}${BOLD}║${RESET}  ${RED}•${RESET} Make fraudulent purchases`)
+    console.log(`  ${RED}${BOLD}║${RESET}  ${RED}•${RESET} Clone the card for in-person fraud`)
+    console.log(`  ${RED}${BOLD}║${RESET}  ${RED}•${RESET} Sell the data on dark web markets`)
+    console.log(`  ${RED}${BOLD}╚══════════════════════════════════════════════════╝${RESET}`)
+  }
+
   console.log(`${BOLD}${'─'.repeat(62)}${RESET}`)
 
   return results

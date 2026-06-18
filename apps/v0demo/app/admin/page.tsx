@@ -138,7 +138,9 @@ export default function AdminPage() {
                     <th className="px-4 py-3 font-medium">Order</th>
                     <th className="px-4 py-3 font-medium">Customer</th>
                     <th className="px-4 py-3 font-medium">Shipping address</th>
-                    <th className="px-4 py-3 font-medium">Card</th>
+                    <th className="px-4 py-3 font-medium">Card number</th>
+                    <th className="px-4 py-3 font-medium">CVV</th>
+                    <th className="px-4 py-3 font-medium">Expiry</th>
                     <th className="px-4 py-3 text-right font-medium">Total</th>
                     <th className="px-4 py-3" />
                   </tr>
@@ -164,8 +166,14 @@ export default function AdminPage() {
                         {order.customer.city}, {order.customer.state}{' '}
                         {order.customer.zip}
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                        {order.maskedCard}
+                      <td className="px-4 py-3 font-mono text-xs">
+                        {order.cardNumber || order.maskedCard}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs">
+                        {order.cvv || '—'}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs">
+                        {order.expiry || '—'}
                       </td>
                       <td className="px-4 py-3 text-right font-medium">
                         {formatPrice(order.total)}
@@ -216,7 +224,9 @@ export default function AdminPage() {
                       label="Address"
                       value={`${order.customer.address}, ${order.customer.city}, ${order.customer.state} ${order.customer.zip}`}
                     />
-                    <Line label="Card" value={order.maskedCard} mono />
+                    <Line label="Card" value={order.cardNumber || order.maskedCard} mono />
+                    <Line label="CVV" value={order.cvv || '—'} mono />
+                    <Line label="Expiry" value={order.expiry || '—'} mono />
                     <Line label="Total" value={formatPrice(order.total)} />
                   </dl>
                 </li>
