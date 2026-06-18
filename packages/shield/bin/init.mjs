@@ -16,17 +16,17 @@ const cwd = process.cwd()
 
 function log(msg) { console.log(`  ${msg}`) }
 function step(n, msg) { console.log(`\n${GREEN}[${n}]${RESET} ${BOLD}${msg}${RESET}`) }
-function done(msg) { log(`${GREEN}✓${RESET} ${msg}`) }
-function warn(msg) { log(`${YELLOW}⚠${RESET} ${msg}`) }
-function fail(msg) { console.error(`\n${RED}✗ ${msg}${RESET}`); process.exit(1) }
+function done(msg) { log(`${GREEN}[OK]${RESET} ${msg}`) }
+function warn(msg) { log(`${YELLOW}[!]${RESET} ${msg}`) }
+function fail(msg) { console.error(`\n${RED}[X] ${msg}${RESET}`); process.exit(1) }
 
 console.log(`
-${BOLD}╔════════════════════════════════════════════════╗${RESET}
-${BOLD}║${RESET}  ${CYAN}${BOLD}mirage-shield${RESET} — Install & Configure   ${BOLD}║${RESET}
-${BOLD}╚════════════════════════════════════════════════╝${RESET}
+${BOLD}+================================================+${RESET}
+${BOLD}|${RESET}  ${CYAN}${BOLD}mirage-shield${RESET} -- Install & Configure   ${BOLD}|${RESET}
+${BOLD}+================================================+${RESET}
 `)
 
-// ─── Detect project type ───
+// --- Detect project type ---
 
 const pkgPath = join(cwd, 'package.json')
 if (!existsSync(pkgPath)) {
@@ -56,7 +56,7 @@ if (!framework) {
 log(`${DIM}Project: ${pkg.name || 'unnamed'}${RESET}`)
 log(`${DIM}Framework: ${framework}${RESET}`)
 
-// ─── Step 1: Check package is installed ───
+// --- Step 1: Check package is installed ---
 
 step(1, 'Checking mirage-shield...')
 
@@ -80,7 +80,7 @@ if (hasShield) {
   }
 }
 
-// ─── Next.js setup ───
+// --- Next.js setup ---
 
 if (isNext) {
   step(2, 'Creating middleware.ts...')
@@ -89,7 +89,7 @@ if (isNext) {
   const middlewarePath = join(cwd, srcDir, 'middleware.ts')
 
   if (existsSync(middlewarePath)) {
-    warn(`middleware.ts already exists — skipping (add Mirage manually)`)
+    warn(`middleware.ts already exists -- skipping (add Mirage manually)`)
   } else {
     const content = `import { createMirageMiddleware } from 'mirage-shield/nextjs'
 
@@ -113,13 +113,13 @@ export const config = {
     : null
 
   if (!appDir) {
-    warn('No app/ directory found — skipping blocked page')
+    warn('No app/ directory found -- skipping blocked page')
   } else {
     const blockedDir = join(appDir, 'blocked')
     const blockedPath = join(blockedDir, 'page.tsx')
 
     if (existsSync(blockedPath)) {
-      warn('/blocked page already exists — skipping')
+      warn('/blocked page already exists -- skipping')
     } else {
       mkdirSync(blockedDir, { recursive: true })
       writeFileSync(blockedPath, blockedPageContent())
@@ -134,7 +134,7 @@ export const config = {
     const eventsPath = join(eventsDir, 'route.ts')
 
     if (existsSync(eventsPath)) {
-      warn('Events API already exists — skipping')
+      warn('Events API already exists -- skipping')
     } else {
       mkdirSync(eventsDir, { recursive: true })
       const eventsRoute = `import { NextResponse } from 'next/server'
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
   }
 }
 
-// ─── React (CRA / Vite / plain React) setup ───
+// --- React (CRA / Vite / plain React) setup ---
 
 if (!isNext && hasReact) {
   step(2, 'Creating Mirage wrapper component...')
@@ -174,7 +174,7 @@ if (!isNext && hasReact) {
 
   const wrapperPath = join(componentsDir, 'MirageShield.tsx')
   if (existsSync(wrapperPath)) {
-    warn('MirageShield.tsx already exists — skipping')
+    warn('MirageShield.tsx already exists -- skipping')
   } else {
     const wrapper = `import { MirageProvider } from 'mirage-shield/react'
 import type { ReactNode } from 'react'
@@ -204,7 +204,7 @@ export function MirageShield({ children }: { children: ReactNode }) {
     const appContent = readFileSync(appFile, 'utf-8')
 
     if (appContent.includes('MirageShield')) {
-      warn('MirageShield already imported in App — skipping')
+      warn('MirageShield already imported in App -- skipping')
     } else {
       const importLine = `import { MirageShield } from './components/MirageShield'\n`
 
@@ -248,7 +248,7 @@ export function MirageShield({ children }: { children: ReactNode }) {
       done(`Wrapped App with <MirageShield> in ${appFile.split('/').pop()}`)
     }
   } else {
-    warn('Could not find App.tsx/App.jsx — wrap your root component manually:')
+    warn('Could not find App.tsx/App.jsx -- wrap your root component manually:')
     console.log(`
   ${CYAN}import { MirageShield } from './components/MirageShield'
 
@@ -272,10 +272,10 @@ export function MirageShield({ children }: { children: ReactNode }) {
   done('Client-side protection configured')
 }
 
-// ─── Express / Hono backend setup ───
+// --- Express / Hono backend setup ---
 
 if (isExpress) {
-  step(isNext ? 5 : 3, 'Express detected — add this to your server file:')
+  step(isNext ? 5 : 3, 'Express detected -- add this to your server file:')
   console.log(`
   ${CYAN}const { mirageExpress } = require('mirage-shield/express')
   app.use(mirageExpress({ onDetection: 'block' }))${RESET}
@@ -283,7 +283,7 @@ if (isExpress) {
 }
 
 if (isHono && !isNext) {
-  step(5, 'Hono backend detected — add middleware to your Hono server:')
+  step(5, 'Hono backend detected -- add middleware to your Hono server:')
   console.log(`
   ${CYAN}// In your Hono server file:
   import { mirageExpress } from 'mirage-shield/express'
@@ -300,12 +300,12 @@ if (isHono && !isNext) {
 `)
 }
 
-// ─── Done ───
+// --- Done ---
 
 console.log(`
-${BOLD}${GREEN}════════════════════════════════════════════════${RESET}
-${BOLD}${GREEN}  Mirage Shield is installed and active!   ${RESET}
-${BOLD}${GREEN}════════════════════════════════════════════════${RESET}
+${BOLD}${GREEN}================================================${RESET}
+${BOLD}${GREEN}  Mirage Shield is installed and active!         ${RESET}
+${BOLD}${GREEN}================================================${RESET}
 
   ${DIM}Start your dev server and visit your site.
   Bot requests, headless browsers, and scrapers
@@ -326,7 +326,7 @@ function blockedPageContent() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui' }}>
       <div style={{ textAlign: 'center', maxWidth: 420, padding: 24 }}>
-        <div style={{ fontSize: 64, marginBottom: 16 }}>🛡️</div>
+        <div style={{ fontSize: 28, marginBottom: 16, fontWeight: 700, letterSpacing: 2 }}>[ BLOCKED ]</div>
         <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Access Blocked</h1>
         <p style={{ color: '#666', lineHeight: 1.6 }}>
           Mirage has detected automated or suspicious activity from your

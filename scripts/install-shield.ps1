@@ -31,20 +31,20 @@ $RESET = "$([char]0x1b)[0m"
 
 function Log($msg) { Write-Host "  $msg" }
 function Step($n, $msg) { Write-Host "`n${GREEN}[$n]${RESET} ${BOLD}$msg${RESET}" }
-function Done($msg) { Log("${GREEN}✓${RESET} $msg") }
-function Warn($msg) { Log("${YELLOW}⚠${RESET} $msg") }
-function Fail($msg) { Write-Host "`n${RED}✗ $msg${RESET}"; exit 1 }
+function Done($msg) { Log("${GREEN}[OK]${RESET} $msg") }
+function Warn($msg) { Log("${YELLOW}[!]${RESET} $msg") }
+function Fail($msg) { Write-Host "`n${RED}[X] $msg${RESET}"; exit 1 }
 
-# ─── Banner ───
+# --- Banner ---
 
 Write-Host @"
 
-${BOLD}╔════════════════════════════════════════════════╗${RESET}
-${BOLD}║${RESET}  ${CYAN}${BOLD}mirage-shield${RESET} — Install & Configure   ${BOLD}║${RESET}
-${BOLD}╚════════════════════════════════════════════════╝${RESET}
+${BOLD}+================================================+${RESET}
+${BOLD}|${RESET}  ${CYAN}${BOLD}mirage-shield${RESET} -- Install & Configure   ${BOLD}|${RESET}
+${BOLD}+================================================+${RESET}
 "@
 
-# ─── Validate target ───
+# --- Validate target ---
 
 $pkgPath = Join-Path -Path $TargetDir -ChildPath 'package.json'
 if (-not (Test-Path -LiteralPath $pkgPath)) {
@@ -84,7 +84,7 @@ if (-not $Yes) {
   }
 }
 
-# ─── Step 1: Install package ───
+# --- Step 1: Install package ---
 
 Step 1 'Installing mirage-shield...'
 
@@ -107,17 +107,17 @@ else {
   }
 }
 
-# ─── Step 2: Generate config ───
+# --- Step 2: Generate config ---
 
 if ($isNext) {
-  # ── Next.js: middleware.ts ──
+  # -- Next.js: middleware.ts --
   Step 2 'Creating middleware.ts...'
 
   $srcDir = if (Test-Path (Join-Path -Path $TargetDir -ChildPath 'src')) { 'src' } else { '' }
   $middlewarePath = Join-Path -Path $TargetDir -ChildPath "$srcDir/middleware.ts"
 
   if (Test-Path -LiteralPath $middlewarePath) {
-    Warn 'middleware.ts already exists — skipping'
+    Warn 'middleware.ts already exists -- skipping'
   }
   else {
 @"
@@ -135,7 +135,7 @@ export const config = {
     Done "Created $srcDir/middleware.ts"
   }
 
-  # ── Next.js: /blocked page ──
+  # -- Next.js: /blocked page --
   Step 3 'Creating /blocked page...'
 
   $appDir = if (Test-Path (Join-Path -Path $TargetDir -ChildPath 'src/app')) { Join-Path -Path $TargetDir -ChildPath 'src/app' }
@@ -143,13 +143,13 @@ export const config = {
     else { $null }
 
   if (-not $appDir) {
-    Warn 'No app/ directory found — skipping blocked page'
+    Warn 'No app/ directory found -- skipping blocked page'
   }
   else {
     $blockedDir = Join-Path -Path $appDir -ChildPath 'blocked'
     $blockedPath = Join-Path -Path $blockedDir -ChildPath 'page.tsx'
     if (Test-Path -LiteralPath $blockedPath) {
-      Warn '/blocked page already exists — skipping'
+      Warn '/blocked page already exists -- skipping'
     }
     else {
       New-Item -ItemType Directory -Path $blockedDir -Force | Out-Null
@@ -158,7 +158,7 @@ export default function BlockedPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui' }}>
       <div style={{ textAlign: 'center', maxWidth: 420, padding: 24 }}>
-        <div style={{ fontSize: 64, marginBottom: 16 }}>🛡️</div>
+        <div style={{ fontSize: 28, marginBottom: 16, fontWeight: 700, letterSpacing: 2 }}>[ BLOCKED ]</div>
         <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Access Blocked</h1>
         <p style={{ color: '#666', lineHeight: 1.6 }}>
           Mirage has detected automated or suspicious activity from your
@@ -173,14 +173,14 @@ export default function BlockedPage() {
     }
   }
 
-  # ── Next.js: Events API ──
+  # -- Next.js: Events API --
   Step 4 'Creating security events API...'
 
   if ($appDir) {
     $eventsDir = Join-Path -Path $appDir -ChildPath 'api/mirage/events'
     $eventsPath = Join-Path -Path $eventsDir -ChildPath 'route.ts'
     if (Test-Path -LiteralPath $eventsPath) {
-      Warn 'Events API already exists — skipping'
+      Warn 'Events API already exists -- skipping'
     }
     else {
       New-Item -ItemType Directory -Path $eventsDir -Force | Out-Null
@@ -210,7 +210,7 @@ export async function POST(request: Request) {
   }
 }
 elseif ($hasReact) {
-  # ── React: Mirage wrapper component ──
+  # -- React: Mirage wrapper component --
   Step 2 'Creating Mirage wrapper component...'
 
   $srcDir = if (Test-Path (Join-Path -Path $TargetDir -ChildPath 'src')) { Join-Path -Path $TargetDir -ChildPath 'src' } else { $TargetDir }
@@ -219,7 +219,7 @@ elseif ($hasReact) {
 
   $wrapperPath = Join-Path -Path $componentsDir -ChildPath 'MirageShield.tsx'
   if (Test-Path -LiteralPath $wrapperPath) {
-    Warn 'MirageShield.tsx already exists — skipping'
+    Warn 'MirageShield.tsx already exists -- skipping'
   }
   else {
 @"
@@ -241,7 +241,7 @@ export function MirageShield({ children }: { children: ReactNode }) {
     Done 'Created src/components/MirageShield.tsx'
   }
 
-  # ── React: Wrap App ──
+  # -- React: Wrap App --
   Step 3 'Wrapping App with MirageShield...'
 
   $appFiles = @('App.tsx', 'App.jsx', 'App.js') | ForEach-Object { Join-Path -Path $srcDir -ChildPath $_ }
@@ -250,7 +250,7 @@ export function MirageShield({ children }: { children: ReactNode }) {
   if ($appFile) {
     $content = Get-Content -LiteralPath $appFile -Raw
     if ($content -match 'MirageShield') {
-      Warn 'MirageShield already imported — skipping'
+      Warn 'MirageShield already imported -- skipping'
     }
     else {
       $importLine = "import { MirageShield } from './components/MirageShield'`n"
@@ -285,7 +285,7 @@ export function MirageShield({ children }: { children: ReactNode }) {
     }
   }
   else {
-    Warn 'Could not find App.tsx/App.jsx — wrap your root component manually:'
+    Warn 'Could not find App.tsx/App.jsx -- wrap your root component manually:'
     Write-Host @"
 
   ${CYAN}import { MirageShield } from './components/MirageShield'
@@ -311,10 +311,10 @@ export function MirageShield({ children }: { children: ReactNode }) {
   Done 'Client-side protection configured'
 }
 
-# ─── Express / Hono ───
+# --- Express / Hono ---
 
 if ($isExpress) {
-  Step 5 'Express detected — add this to your server file:'
+  Step 5 'Express detected -- add this to your server file:'
   Write-Host @"
 
   ${CYAN}const { mirageExpress } = require('mirage-shield/express')
@@ -323,7 +323,7 @@ if ($isExpress) {
 }
 
 if ($isHono) {
-  Step 5 'Hono detected — add middleware to your Hono server:'
+  Step 5 'Hono detected -- add middleware to your Hono server:'
   Write-Host @"
 
   ${CYAN}app.use('*', async (c, next) => {
@@ -336,13 +336,13 @@ if ($isHono) {
 "@
 }
 
-# ─── Finish ───
+# --- Finish ---
 
 Write-Host @"
 
-${BOLD}${GREEN}════════════════════════════════════════════════${RESET}
-${BOLD}${GREEN}  Mirage Shield is installed and active!   ${RESET}
-${BOLD}${GREEN}════════════════════════════════════════════════${RESET}
+${BOLD}${GREEN}================================================${RESET}
+${BOLD}${GREEN}  Mirage Shield is installed and active!         ${RESET}
+${BOLD}${GREEN}================================================${RESET}
 "@
 
 if ($isNext) {
