@@ -1,3 +1,5 @@
+![](./img/logo-outlinenobg.png)
+
 # @mirageshield/mirage
 
 **AI breach defense for any website.** Block scrapers, bots, headless browsers, and AI-driven attacks with a single install.
