@@ -1,6 +1,6 @@
 {
   "name": "@mirageshield/mirage",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "AI breach defense package - protect any website from AI-driven attacks. Works in Node.js, Next.js, Express, React, and any static HTML page via CDN.",
   "keywords": [
     "security",
