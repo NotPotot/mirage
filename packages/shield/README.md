@@ -14,6 +14,10 @@ Mirage Shield works in two layers at once:
 
 ## Install
 
+Mirage Shield works in **two installation modes** — pick the one that matches your project.
+
+### 1. Node / framework projects (npm)
+
 ```bash
 npm install @mirageshield/mirage
 ```
@@ -24,7 +28,26 @@ Then run the setup wizard from your project root:
 npx mirage
 ```
 
-The CLI auto-detects your framework (Next.js, Express, Hono, or plain React) and generates the right configuration files for you. If you'd rather wire it up manually, see the quick-start examples below.
+The CLI auto-detects your framework (Next.js, Express, Hono, or plain React) and generates the right configuration files for you.
+
+### 2. Plain HTML / static sites (CDN)
+
+No build step required — drop a single `<script>` tag into any HTML page:
+
+```html
+<script
+  src="https://unpkg.com/@mirageshield/mirage"
+  data-mirage
+  data-protect="[data-sensitive],input[type=password]"
+  data-honeypots="true"
+  data-behavior="true"
+  data-report="/api/mirage/report">
+</script>
+```
+
+That's it. Mirage auto-initializes on `DOMContentLoaded` and exposes `window.Mirage` for runtime access.
+
+If you'd rather wire things up manually, see the quick-start examples below.
 
 ---
 
@@ -105,18 +128,62 @@ Mark any input you want shielded from scrapers with `data-sensitive`:
 
 ### Plain HTML (no framework)
 
-Drop the global client bundle into any page:
+Three ways to load it - pick whichever fits your stack.
+
+**A. Drop-in with auto-init (zero JS).** Mirage reads its config from `data-*` attributes on the script tag and initializes automatically:
 
 ```html
-<script src="https://unpkg.com/@mirageshield/mirage/dist/client.global.js"></script>
+<script
+  src="https://unpkg.com/@mirageshield/mirage"
+  data-mirage
+  data-protect="[data-sensitive],input[type=password]"
+  data-honeypots="true"
+  data-behavior="true"
+  data-report="/api/mirage/report">
+</script>
+```
+
+**B. Manual init via the global.** Useful when you need programmatic control:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/@mirageshield/mirage"></script>
 <script>
-  window.Mirage.init({
+  const mirage = window.Mirage.init({
     protectSelectors: ['[data-sensitive]', 'input[type="password"]'],
     honeypotFields: true,
     behaviorTracking: true,
+    reportEndpoint: '/api/mirage/report',
   })
+  console.log('headless score:', mirage.headlessScore)
 </script>
 ```
+
+**C. ES module import.** For modern static sites or bundler-free workflows:
+
+```html
+<script type="module">
+  import { init } from 'https://esm.sh/@mirageshield/mirage/browser'
+  init({ protectSelectors: ['[data-sensitive]'], honeypotFields: true })
+</script>
+```
+
+Mark any input you want shielded from scrapers with `data-sensitive`:
+
+```html
+<input name="card" data-sensitive />
+```
+
+**Supported `data-*` attributes:**
+
+| Attribute | Type | Default | Description |
+|---|---|---|---|
+| `data-mirage` | flag | - | Marks the script for auto-init. Required for option A. |
+| `data-config` | JSON | - | Full config as a JSON string. Overrides individual attributes. |
+| `data-protect` | CSV | - | Comma-separated CSS selectors for sensitive fields. |
+| `data-honeypots` | bool | `true` | Inject invisible honeypot fields into forms. |
+| `data-behavior` | bool | `true` | Track mouse + keystroke cadence. |
+| `data-report` | URL | - | POST endpoint for detection events. |
+| `data-auto-init` | bool | `true` | Set to `false` to skip auto-init and call `window.Mirage.init()` manually. |
 
 ---
 
@@ -198,11 +265,20 @@ Request -> Next.js / Express middleware
 
 | Import | Use in |
 |---|---|
-| `@mirageshield/mirage` | Shared core (types, utilities) |
+| `@mirageshield/mirage` | Shared core (types, utilities). Works in Node and browser bundlers. |
 | `@mirageshield/mirage/nextjs` | Next.js middleware helpers |
 | `@mirageshield/mirage/express` | Express middleware helpers |
 | `@mirageshield/mirage/react` | React provider and hooks |
-| `@mirageshield/mirage/client` | Global UMD bundle for plain HTML |
+| `@mirageshield/mirage/browser` | Browser-ready ESM bundle (for `<script type="module">` and CDNs like esm.sh) |
+| `@mirageshield/mirage/client` | Global IIFE bundle (`window.Mirage`) for plain HTML / `<script>` tags |
+
+**CDN endpoints:**
+
+```
+https://unpkg.com/@mirageshield/mirage              -> IIFE bundle (window.Mirage)
+https://cdn.jsdelivr.net/npm/@mirageshield/mirage    -> IIFE bundle (window.Mirage)
+https://esm.sh/@mirageshield/mirage/browser          -> ESM bundle
+```
 
 ---
 

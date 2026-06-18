@@ -1,13 +1,35 @@
 {
   "name": "@mirageshield/mirage",
-  "version": "0.1.2",
-  "description": "AI breach defense package - protect any website from AI-driven attacks",
+  "version": "0.2.0",
+  "description": "AI breach defense package - protect any website from AI-driven attacks. Works in Node.js, Next.js, Express, React, and any static HTML page via CDN.",
+  "keywords": [
+    "security",
+    "bot-detection",
+    "anti-scraping",
+    "ai-defense",
+    "honeypot",
+    "headless-detection",
+    "rate-limiting",
+    "nextjs",
+    "express",
+    "react",
+    "browser",
+    "cdn"
+  ],
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
+  "browser": "./dist/browser.mjs",
+  "unpkg": "./dist/client.global.js",
+  "jsdelivr": "./dist/client.global.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": [
+    "./dist/client.global.js",
+    "./dist/browser.mjs"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "browser": "./dist/browser.mjs",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
@@ -29,10 +51,17 @@
       "require": "./dist/react.js",
       "default": "./dist/react.mjs"
     },
-    "./client": "./dist/client.global.js"
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.mjs",
+      "default": "./dist/browser.mjs"
+    },
+    "./client": "./dist/client.global.js",
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "rm -rf dist && tsup",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsup",
     "dev": "tsup --watch",
     "test": "echo \"no tests yet\"",
     "setup": "node ./bin/init.mjs",
@@ -59,6 +88,15 @@
   },
   "files": ["dist", "bin"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NotPotot/cipherhacks.git",
+    "directory": "packages/shield"
+  },
+  "homepage": "https://github.com/NotPotot/cipherhacks#readme",
+  "bugs": {
+    "url": "https://github.com/NotPotot/cipherhacks/issues"
+  },
   "publishConfig": {
     "access": "public"
   }
