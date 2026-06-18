@@ -1,6 +1,6 @@
 {
   "name": "mirage-shield",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "AI breach defense package - protect any website from AI-driven attacks",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
