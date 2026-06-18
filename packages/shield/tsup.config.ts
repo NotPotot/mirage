@@ -23,7 +23,7 @@ export default defineConfig([
     external: ['react', 'react-dom'],
   },
   {
-    entry: { 'client.global': 'src/client/standalone.ts' },
+    entry: { client: 'src/client/standalone.ts' },
     format: ['iife'],
     outDir: 'dist',
     platform: 'browser',
