@@ -75,6 +75,7 @@
     "attack": "npx tsx scripts/attack-sim.ts",
     "attack:vulnerable": "npx tsx scripts/attack-sim.ts --target vulnerable",
     "attack:protected": "npx tsx scripts/attack-sim.ts --target protected",
+    "prepublishOnly": "npm run build",
     "postinstall": "node -e \"try{require('fs').existsSync(require('path').join(process.cwd(),'package.json'))&&console.log('\\n  [@mirageshield/mirage] Run \\x1b[1mnpx mirage\\x1b[0m to configure Mirage Shield\\n')}catch(e){}\""
   },
   "peerDependencies": {
