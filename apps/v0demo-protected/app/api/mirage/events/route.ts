@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { addEvent, getEvents, getEventsSince, getStats } from 'mirage-shield'
+import { addEvent, getEvents, getEventsSince, getStats } from '@mirageshield/mirage'
 
 export async function GET(request: Request) {
   const url = new URL(request.url)

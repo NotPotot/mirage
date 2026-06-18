@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Shield, ShieldCheck, ShieldAlert } from 'lucide-react'
-import { useShieldStatus } from 'mirage-shield/react'
+import { useShieldStatus } from '@mirageshield/mirage/react'
 
 export function ShieldStatusWidget() {
   const status = useShieldStatus()

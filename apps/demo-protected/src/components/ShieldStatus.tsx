@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useShieldStatus } from 'mirage-shield/react';
+import { useShieldStatus } from '@mirageshield/mirage/react';
 
 export function ShieldStatus() {
   const status = useShieldStatus();

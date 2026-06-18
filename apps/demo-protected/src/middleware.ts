@@ -1,4 +1,4 @@
-import { createMirageMiddleware } from 'mirage-shield/nextjs';
+import { createMirageMiddleware } from '@mirageshield/mirage/nextjs';
 
 export const middleware = createMirageMiddleware({
   routes: {

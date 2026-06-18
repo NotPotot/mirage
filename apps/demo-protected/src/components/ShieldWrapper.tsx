@@ -1,6 +1,6 @@
 'use client';
 
-import { MirageProvider } from 'mirage-shield/react';
+import { MirageProvider } from '@mirageshield/mirage/react';
 import { ShieldStatus } from './ShieldStatus';
 import type { ReactNode } from 'react';
 
